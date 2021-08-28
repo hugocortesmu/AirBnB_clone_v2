@@ -2,7 +2,8 @@
 """"""
 import os
 from fabric.api import put, run, env
-from datetime import datetime
+from os.path import exists
+env.hosts = ['34.139.156.235', '52.91.22.202']
 
 
 
@@ -10,7 +11,7 @@ def do_deploy(archive_path):
     """
     distributes an archive to the web servers
     """
-    if (archive_path) is False:
+    if exists(archive_path) is False:
         return False
     try:
         file_n = archive_path.split("/")[-1]

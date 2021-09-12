@@ -10,13 +10,22 @@ class FileStorage:
 
     def all(self, cls=None):
         """Returns a dictionary of models currently in storage"""
-        if cls is None:
+        if FileStorage.__objects != {}:
+            my_dict = {}
+            my_list = str(cls).split('.')
+            for i in range(0, len(my_list)):
+                if i == 2:
+                    x = my_list[i].split('\'')
+                    cls = x[0]
+            if cls is None:
+                return FileStorage.__objects
+            for key, value in FileStorage.__objects.items():
+                list_keys = key.split('.')
+                if list_keys[0] == cls:
+                    my_dict[key] = value
+            return my_dict
+        else:
             return FileStorage.__objects
-        dic = {}
-        for keys, values in FileStorage.__objects.items():
-            if cls == values.__class__:
-                dic[keys] = values
-        return dic
 
     def new(self, obj):
         """Adds new object to storage dictionary"""
@@ -40,24 +49,37 @@ class FileStorage:
         from models.city import City
         from models.amenity import Amenity
         from models.review import Review
+
         classes = {
-            'BaseModel': BaseModel, 'User': User, 'Place': Place,
-            'State': State, 'City': City, 'Amenity': Amenity,
-            'Review': Review
-        }
+                    'BaseModel': BaseModel, 'User': User, 'Place': Place,
+                    'State': State, 'City': City, 'Amenity': Amenity,
+                    'Review': Review
+                  }
         try:
             temp = {}
             with open(FileStorage.__file_path, 'r') as f:
                 temp = json.load(f)
                 for key, val in temp.items():
-                    self.all()[key] = classes[val['__class__']](**val)
+                        self.all()[key] = classes[val['__class__']](**val)
         except FileNotFoundError:
             pass
 
     def delete(self, obj=None):
-        """delete obj from __objects if it’s inside"""
-        if obj is None:
-            return
-        key = "{}.{}".format(obj.__class__.__name__, obj.id)
-        if key in FileStorage.__objects:
-            FileStorage.__objects.pop(key)
+        """ to delete obj from __objects if it’s inside - if obj is
+        equal to None, the method should not do anything.
+        """
+        if obj is not None:
+            try:
+                if obj.id:
+                    concat = "{}.{}".format(obj.__class__.__name__, obj.id)
+                    del FileStorage.__objects[concat]
+            except(AttributeError):
+                pass
+        else:
+            pass
+
+    def close(self):
+        """
+        deserializing the JSON file to objects
+        """
+        self.reload()

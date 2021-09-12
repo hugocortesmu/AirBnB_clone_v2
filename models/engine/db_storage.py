@@ -1,81 +1,87 @@
 #!/usr/bin/python3
-"""database storage for hbnb clone"""
-from models.base_model import BaseModel
-from models.base_model import Base
+""" Data base Storage.
+"""
+import models
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import session
+from sqlalchemy.orm.session import sessionmaker
 from sqlalchemy.orm import scoped_session
+from models.base_model import BaseModel, Base
 from os import getenv
-from models.state import State
-from models.city import City
-from models.user import User
-from models.place import Place
-from models.review import Review
-from models.amenity import Amenity
 
 
-
-class DBStorage:
-    """Class Storage"""
+class DBStorage():
+    """ This class create the connection between mysql+mysqldb,
+    with the methods init, all, new, save and reload.
+    """
     __engine = None
     __session = None
 
     def __init__(self):
-        """inicializacion"""
-        HBNB_MYSQL_USER = getenv('HBNB_MYSQL_USER')
-        HBNB_MYSQL_PWD = getenv('HBNB_MYSQL_PWD')
-        HBNB_MYSQL_HOST = getenv('HBNB_MYSQL_HOST')
-        HBNB_MYSQL_DB = getenv('HBNB_MYSQL_DB')
-        HBNB_ENV = getenv('HBNB_ENV')
-        self.__engine = create_engine('mysql+mysqldb://{}:{}@{}/{}'
-                                      .format(HBNB_MYSQL_USER,
-                                              HBNB_MYSQL_PWD,
-                                              HBNB_MYSQL_HOST,
-                                              HBNB_MYSQL_DB),
-                                      pool_pre_ping=True)
+        """ This method create the enigne.
+        """
+        self.__engine = create_engine('mysql+mysqldb://{}:{}@{}/{}'.format(
+            getenv('HBNB_MYSQL_USER'), getenv('HBNB_MYSQL_PWD'),
+            getenv('HBNB_MYSQL_HOST'), getenv('HBNB_MYSQL_DB'),
+            pool_pre_ping=True))
         if getenv('HBNB_ENV') == 'test':
             Base.metadata.drop_all(self.__engine)
 
     def all(self, cls=None):
-        """auto"""
-        if cls is None:
-            O_query = self.__session.query(State).all()
-            O_query.extend(self.__session.query(City).all())
-            O_query.extend(self.__session.query(User).all())
-            O_query.extend(self.__session.query(Place).all())
-            O_query.extend(self.__session.query(Review).all())
-            O_query.extend(self.__session.query(Amenity).all())
+        """ This method create the query to the class (cls) and
+        if is none create the query to all the classes.
+        Return: the object in form of dictionary.
+        """
+        from ..state import State
+        from ..city import City
+        from ..user import User
+        from ..review import Review
+        from ..place import Place
+        my_dict = {}
+        if cls is not None:
+            for obj in self.__session.query(cls):
+                key_obj = obj.__class__.__name__ + '.' + obj.id
+                my_dict[key_obj] = obj
         else:
-            if type(cls) == str:
-                cls = eval(cls)
-            O_query = self.__session.query(cls)
-
-        mydict = {}
-        for objt in O_query:
-         key = "{}.{}".format(type(objt)._name, objt.id)
-         mydict[key] = objt
-         return mydict
+            my_list = [User, State, City, Place, Review]
+            for _list in my_list:
+                for obj in self.__session.query(_list):
+                    key_obj = obj.__class__.__name__ + '.' + obj.id
+                    my_dict[key_obj] = obj
+        return my_dict
 
     def new(self, obj):
-        """Add the object datab session"""
+        """ This method add an new object.
+        """
         self.__session.add(obj)
 
     def save(self):
-        """Commit the changes"""
+        """ This method save the object.
+        """
         self.__session.commit()
 
     def delete(self, obj=None):
-        """Delete from the current database session obj if not None"""
+        """ This method delete a object.
+        """
         if obj is not None:
             self.__session.delete(obj)
 
     def reload(self):
-        """reloads data of the datab"""
+        """ This method create all tables of the data base and log in.
+        """
+        from ..state import State, Base
+        from ..city import City
+        from ..user import User
+        from ..place import Place
+        from ..review import Review
+        from ..amenity import Amenity
         Base.metadata.create_all(self.__engine)
-        Session = scoped_session(sessionmaker(bind=self.__engine,
-                                              expire_on_commit=False))
-        self.__session = Session()
+        self.__session = scoped_session(sessionmaker(
+            expire_on_commit=False, bind=self.__engine))
 
     def close(self):
-        """call remove() method on the private session attribute"""
-        self.__session.close()
+        """
+        method on the private session attribute
+        """
+        self.__session.remove()
